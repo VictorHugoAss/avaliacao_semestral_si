@@ -1,46 +1,43 @@
-Este documento detalha as decisões de projeto e o embasamento teórico para as abordagens adotadas nos algoritmos de aprendizado de máquina da Avaliação Semestral - Parte Prática.
+QUESTÃO 1 — Heart Failure
 
----
+a) Justificar a escolha do metaestimador
+Como o objetivo da tarefa é indicar a qual grupo o paciente pertence, estamos lidando com um problema de agrupamento (clustering) por similaridade clínica, e não uma classificação preditiva. Por isso, optei pelo K-Means (Aprendizado Não-Supervisionado).
 
-## QUESTÃO 1 — Heart Failure
+b) Procedimentos de pré-processamento
 
-**a) Justificar a escolha do metaestimador**
-Para esta tarefa, o objetivo exigido era indicar "a qual grupo esse paciente pertence", o que caracteriza um problema de agrupamento (clustering) por semelhança clínica, e não uma classificação preditiva. Por isso, o metaestimador escolhido foi o **K-Means** (Aprendizado Não-Supervisionado). O número ótimo de grupos foi calculado matematicamente através do método do cotovelo, garantindo que o modelo descobrisse os agrupamentos por perfil fisiológico.
+Limpeza: Primeiro, removi a coluna alvo DEATH_EVENT para garantir que o modelo agrupasse os pacientes pelo estado clínico no momento do exame, e não pelo óbito. Também retirei a coluna time, por ser apenas um dado de controle de acompanhamento.
 
-**b) Demonstrar todos os procedimentos de pré-processamento**
-1. **Limpeza de Atributos:** A coluna alvo `DEATH_EVENT` foi removida para garantir que o modelo agrupasse os pacientes pelo estado clínico e não pelo desfecho (óbito). A coluna temporal `time` também foi removida, pois é um dado de controle de acompanhamento e não um dado fisiológico.
-2. **Tratamento de Variáveis Binárias:** A base possui informações binárias (ex: *anaemia*, *diabetes*, *sex*, etc.). A estratégia adotada foi aplicar o `MinMaxScaler` em **todas** as colunas. Como as variáveis binárias já operam nos limites de 0 e 1, a normalização não as distorce, mas reduz as variáveis contínuas de alta magnitude (como *creatinine_phosphokinase*) para a mesma escala. Isso garante que todas as *features* tenham o mesmo peso no cálculo de distância euclidiana do K-Means.
+Tratamento de Escalas e Binários: A base possui dados contínuos de alta magnitude (como plaquetas) e informações binárias (0 e 1, como diabetes e sexo). Apliquei o MinMaxScaler em toda a base. Isso reduziu os valores gigantes para a escala [0, 1] sem distorcer as variáveis binárias, garantindo que todas as features tivessem o mesmo peso no cálculo de distância euclidiana do K-Means.
 
-**c) Demonstrar a inferência funcionando**
-A inferência foi implementada de forma a receber o dicionário de um novo paciente com dados clínicos desconhecidos, aplicar o mesmo transformador `MinMaxScaler` treinado originalmente e utilizar o preditor `.predict()` do K-Means para alocá-lo ao centroide (grupo) mais próximo, informando o resultado final.
+c) A inferência funcionando
+O módulo de inferência foi construído para receber um dicionário com os dados de um novo paciente. O código converte esses dados, aplica o .transform() do MinMaxScaler treinado previamente e usa a função .predict() do K-Means para alocar o paciente ao grupo (centroide) mais próximo.
 
----
+QUESTÃO 2 — Wine Quality
 
-## QUESTÃO 2 — Wine Quality
+a) O fluxo de procedimentos (Pipeline)
+O pipeline desenvolvido seguiu estas etapas:
 
-**a) O fluxo de procedimentos até o treinamento do modelo (pipeline)**
-O pipeline consistiu em:
-1. Carregar os dois arquivos originais (`winequality-red.csv` e `winequality-white.csv`) e adicionar uma nova coluna indicadora `is_red` (1 para tinto, 0 para branco) para não perder essa característica importante.
-2. Concatenar os dados em um único arquivo de base de conhecimento.
-3. Normalizar os dados numéricos utilizando o `StandardScaler`.
-4. Aplicar o algoritmo **SMOTE** apenas nos dados de treinamento para gerar exemplos sintéticos por interpolação, resolvendo o extremo desbalanceamento da base original (que era amplamente dominada pelas notas 5 e 6).
+Carregamento dos arquivos winequality-red.csv e winequality-white.csv, adicionando a coluna is_red (1 = tinto, 0 = branco) para preservar a origem do vinho.
 
-**b) Acurácia global, acurácia por classes e a medida f1-score**
-No módulo de treinamento, a função customizada extrai a matriz de confusão (`confusion_matrix`) normalizada para calcular e exibir a **acurácia por classe** individualmente. Após o treinamento dos 3 metaestimadores concorrentes exigidos (Decision Tree, Random Forest e Logistic Regression), o sistema imprime a **Acurácia Global** e o **F1-Score ponderado** (weighted) de cada um para embasar a decisão.
+Concatenação dos dois arquivos em um único DataFrame.
 
-**c) Justificar qual é o modelo mais adequado para possível implantação**
-O modelo selecionado para implantação foi o **Random Forest**.
-O critério de seleção baseou-se no desempenho superior do *F1-Score ponderado* (e não apenas na acurácia global). Em bases muito desbalanceadas como esta, a acurácia global engana. O F1-Score é mais realista por penalizar os algoritmos que erram as classes mais difíceis (vinhos com notas muito altas ou muito baixas). O Random Forest equilibra um melhor desempenho para traçar fronteiras não lineares de predição e garante maior robustez contra *outliers*.
+Normalização dos atributos químicos com StandardScaler.
 
----
+Balanceamento de classes usando SMOTE (aplicado estritamente aos dados de treino). Isso foi essencial para resolver o forte desbalanceamento da base, que era dominada por vinhos de nota 5 e 6.
 
-## QUESTÃO 3 — Black Friday Sales Dataset
+b) Acurácia global, por classes e F1-Score
+Treinei três algoritmos diferentes (Decision Tree, Random Forest e Logistic Regression). No código, extraí a Matriz de Confusão e utilizei a função classification_report para calcular a acurácia por classe, a acurácia global e o F1-Score ponderado (weighted) de cada modelo, exibindo tudo no terminal para comparação.
 
-**a) O fluxo de procedimentos até o treinamento do modelo (pipeline)**
-Como a base contém uma mistura de características numéricas contínuas (ex: valor da compra, desconto) e dados categóricos (ex: gênero, cidade), construímos um pipeline utilizando um `ColumnTransformer`. O pré-processador aplicou o `OneHotEncoder` nas variáveis categóricas para transformá-las em matrizes binárias sem criar falsas ordens hierárquicas, e aplicou o `StandardScaler` nas colunas numéricas. Esse pipeline de limpeza e pré-processamento foi treinado de forma independente para cada um dos 3 alvos (*product category*, *payment_method* e *age_group*).
+c) Justificativa do modelo adequado para implantação
+O modelo escolhido para produção foi a Random Forest. A decisão foi baseada no F1-Score ponderado, e não apenas na acurácia global. Em bases desbalanceadas, a acurácia pode ser ilusória. O F1-Score penaliza os modelos que erram as classes minoritárias (vinhos excepcionais ou muito ruins). A Random Forest se mostrou muito mais robusta para lidar com as fronteiras não-lineares desses dados químicos, evitando o overfitting observado na Árvore de Decisão simples.
 
-**b) Acurácia global, acurácia por classes e a medida f1-score / Especificidade / Sensibilidade**
-Através da biblioteca `sklearn.metrics`, o script de avaliação extrai a matriz de confusão (*Confusion Matrix*). Através da extração algébrica das variáveis da matriz — *True Positives (TP)*, *False Negatives (FN)*, *False Positives (FP)* e *True Negatives (TN)* — o sistema calcula manualmente e exibe as exigências de Sensibilidade, Especificidade, Acurácia Global, e por classe.
+QUESTÃO 3 — Black Friday Sales Dataset
 
-**c) O funcionamento do sistema inteligente indicando categoria do produto, forma de pagamento e faixa etária**
-O módulo de inferência final recebe as circunstâncias de uma venda pontual e submete essa nova entrada simultaneamente através dos três algoritmos gerados. Para cumprir o requisito de demonstrar um **grau de certeza**, o sistema substitui a saída tradicional e utiliza o método estatístico `.predict_proba()` do Scikit-Learn. Com isso, o código extrai não apenas a classificação, mas as chances associadas e imprime em tela a predição juntamente com a porcentagem exata de confiança do modelo em sua resposta.
+a) O fluxo de procedimentos (Pipeline)
+Como a base mistura dados categóricos (gênero, cidade) e numéricos (valor da compra), utilizei um ColumnTransformer do Scikit-Learn. Apliquei o OneHotEncoder nas variáveis categóricas (para não criar uma falsa ordem hierárquica que o LabelEncoder geraria) e o StandardScaler nas numéricas. Esse pipeline foi instanciado e treinado três vezes, uma para cada modelo independente (Categoria, Pagamento e Idade).
+
+b) Cálculo das Métricas (Sensibilidade, Especificidade, etc.)
+Para problemas multiclasse, o cálculo dessas métricas não é direto. No script, construí uma lógica que itera sobre a Matriz de Confusão do modelo vencedor. A partir dela, o código isola matematicamente os Verdadeiros Positivos (TP), Falsos Negativos (FN), Falsos Positivos (FP) e Verdadeiros Negativos (TN) de cada classe, calculando a média global de Sensibilidade e Especificidade para cumprir a exigência do enunciado.
+
+c) Funcionamento do sistema e Grau de Certeza
+O módulo de inferência recebe o contexto (circunstância) de uma nova venda e o repassa simultaneamente aos três pipelines treinados. Para exibir o grau de certeza exigido, substituí a saída tradicional .predict() pelo método .predict_proba(). Assim, o sistema não joga apenas a classe final na tela, mas indica qual é a predição e a exata porcentagem de confiança do algoritmo naquela resposta.
